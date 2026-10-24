@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -10,27 +9,41 @@ const port = process.env.PORT || 4002;
 
 app.use(express.json());
 
-app.get('/', (req, res) => {
-    res.send('Hello from back');
-});
+// Connexion à MongoDB (réutilisée entre les appels sur Vercel)
+let connexion = null;
+async function connecterDB() {
+    if (mongoose.connection.readyState === 1) return;
+    const uri = process.env.MONGO_URI;
+    if (!uri) {
+        throw new Error('MONGO_URI est absente');
+    }
+    if (!connexion) {
+        connexion = mongoose.connect(uri);
+    }
+    await connexion;
+    console.log('MongoDB connected successfully');
+}
 
-async function startServer() {
+// Connecte la base avant chaque requête, sans bloquer la route "/"
+app.use(async (req, res, next) => {
     try {
-        const uri = process.env.MONGO_URI;
-
-        if (!uri) {
-            throw new Error('MONGO_URI est absente du fichier .env');
-        }
-
-        await mongoose.connect(uri);
-        console.log('MongoDB connected successfully');
-
-        app.listen(port, () => {
-            console.log('Le serveur tourne dans le port ' + port);
-        });
+        await connecterDB();
     } catch (error) {
         console.error('Erreur de connexion :', error.message);
     }
+    next();
+});
+
+app.get('/', (req, res) => {
+    res.send("Hello from back");
+});
+
+// Lancer le serveur seulement en local (node server.js)
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log('Le serveur tourne dans le port ' + port);
+    });
 }
 
-startServer();
+// Indispensable pour Vercel
+module.exports = app;
