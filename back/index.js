@@ -1,16 +1,36 @@
-const express = require('express')
+
+const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
 const app = express();
-const connectDB = require('./config/Db')
-const port = 4002
-const dotenv = require('dotenv')
-dotenv.config()
+const port = process.env.PORT || 4002;
 
-app.get('/',(req,res)=>{
-    res.send('Hello from back')
-})
+app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.send('Hello from back');
+});
 
-connectDB()
-app.listen(port,(req,res)=>{
-    console.log("le serveur tourne dans le port "+ port)
-})
+async function startServer() {
+    try {
+        const uri = process.env.MONGO_URI;
+
+        if (!uri) {
+            throw new Error('MONGO_URI est absente du fichier .env');
+        }
+
+        await mongoose.connect(uri);
+        console.log('MongoDB connected successfully');
+
+        app.listen(port, () => {
+            console.log('Le serveur tourne dans le port ' + port);
+        });
+    } catch (error) {
+        console.error('Erreur de connexion :', error.message);
+    }
+}
+
+startServer();
